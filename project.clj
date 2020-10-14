@@ -1,5 +1,5 @@
-(defproject spyscope "0.1.7-SNAPSHOT"
-  :description "Trace-oriented debugging tools for Clojure(Script)"
+(defproject waffletower/spyscope "0.1.7-SNAPSHOT"
+  :description "Trace-oriented debugging tools for Clojure(Script). Forked from http://github.com/dgrnbrg/spyscope"
 
   :url "http://github.com/dgrnbrg/spyscope"
 
@@ -8,14 +8,13 @@
 
   :deploy-repositories  [["releases" :clojars]]
 
-  :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.clojure/clojurescript "1.10.238"]
-                 [clj-time "0.14.3"]
+  :dependencies [[org.clojure/clojure "1.10.1"]
+                 [org.clojure/clojurescript "1.10.764"]
+                 [clj-time "0.15.2"]
                  [com.andrewmcveigh/cljs-time "0.5.2"]
                  [net.cgrand/macrovich "0.2.1"]
-                 [mvxcvi/puget "1.0.2" :exclusions [brandonbloom/fipp]]
-                 [bigml/fipp "0.6.8"]]
-
+                 [mvxcvi/puget "1.3.1"]
+                 [fipp "0.6.23"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-doo "0.1.10" :exclusions [org.clojure/clojurescript]]]
@@ -38,4 +37,3 @@
         :output-to "target/cljs/tests.js"
         :main spyscope.test-runner
         :optimizations :whitespace}}]})
-

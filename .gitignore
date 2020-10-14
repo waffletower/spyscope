@@ -11,3 +11,4 @@ pom.xml
 /spyscope.iml
 /.lein-repl-history
 /.idea/
+.lein-env

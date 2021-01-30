@@ -1,4 +1,4 @@
-(defproject waffletower/spyscope "0.1.7-SNAPSHOT"
+(defproject waffletower/spyscope "0.1.7"
   :description "Trace-oriented debugging tools for Clojure(Script). Forked from http://github.com/dgrnbrg/spyscope"
 
   :url "http://github.com/dgrnbrg/spyscope"

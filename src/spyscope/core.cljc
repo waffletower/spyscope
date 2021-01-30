@@ -1,8 +1,12 @@
 (ns spyscope.core
-  (:require [puget.printer :as pp]
-            [clojure.string :as str]
-            [clj-time.core :as time]
-            [clj-time.format :as fmt]))
+  (:require [clojure.string :as str]
+            #?(:clj  [clj-time.core :as time]
+               :cljs [cljs-time.core :as time])
+            #?(:clj  [clj-time.format :as fmt]
+               :cljs [cljs-time.format :as fmt])
+            #?(:clj  [puget.printer :as pp]))
+  #?(:clj  (:require [net.cgrand.macrovich :as macrovich])
+     :cljs (:require-macros [net.cgrand.macrovich :as macrovich])))
 
 (defn- indent
   "Indents a string with `n` spaces."
@@ -20,28 +24,43 @@
   (let [now (time/now)
         nses-regex (:nses meta)
         n (or (:fs meta) 1)
-        frames-base (->> (ex-info "" {})
-                         .getStackTrace
-                         seq
-                         (drop 2))
+
+        frames-base #?(:clj  (->> (ex-info "" {})
+                                  .getStackTrace
+                                  seq
+                                  (drop 2))
+                       :cljs (->> (ex-info "" {})
+                                  .-stack
+                                  (str/split-lines)
+                                  (drop 2)
+                                  (drop-while #(str/includes? % "ex_info"))
+                                  (map #(str/replace % "    at " ""))))
+
         frames (if nses-regex
                  (filter (comp (partial re-find nses-regex) str)
                          frames-base)
                  frames-base)
-        frames (->> frames
-                    (remove #(clojure.string/includes? % "spyscope.core"))
-                    (take n)
-                    (map str)
-                    (reverse))
 
-        value-string (pp/cprint-str form)
+        frames #?(:clj  (->> frames
+                             (remove #(clojure.string/includes? % "spyscope.core"))
+                             (take n)
+                             (map str)
+                             (reverse))
+                  :cljs (->> frames
+                             (remove #(clojure.string/includes? % "spyscope$core"))
+                             (remove #(not (clojure.string/includes? % "(")))
+                             (take n)
+                             (reverse)))
+
+        value-string #?(:clj  (pp/cprint-str form)
+                        :cljs (str form))
 
         ;Are there multiple trace lines?
         multi-trace? (> n 1)
 
         ;Indent if it's a multi-line structure
         value-string (if (or (> (count value-string) 40)
-                             (.contains value-string "\n"))
+                             (str/includes? value-string "\n"))
                        (str "\n" (indent 2 value-string))
                        value-string)
 
@@ -66,9 +85,13 @@
 (defn print-log
   "Reader function to pprint a form's value."
   [form]
-  `(doto ~form pp/cprint))
+  `(macrovich/case
+     :clj  (doto ~form pp/cprint)
+     :cljs (doto ~form println)))
 
-(def ^{:internal true} trace-storage (agent {:trace [] :generation 0}))
+; Trace storage - an atom rather than an agent is used in cljs.
+#?(:clj  (def ^{:internal true} trace-storage (agent {:trace [] :generation 0}))
+   :cljs (def ^{:internal true} trace-storage (atom {:trace [] :generation 0})))
 
 (defn trace
   "Reader function to store detailed information about a form's value at runtime
@@ -79,8 +102,10 @@
                                      ~(assoc (meta form)
                                         ::form (list 'quote form)))]
      (when ~(::print? (meta form))
-       (print (str (:message value#) "\n")))
-     (send-off trace-storage
+       (macrovich/case
+         :clj  (print (str (:message value#) "\n"))
+         :cljs (print (str (:message value#)))))
+     ((macrovich/case :clj send-off :cljs swap!) trace-storage
                (fn [{g# :generation t# :trace :as storage#}]
                  (assoc storage#
                    :trace
@@ -97,11 +122,3 @@
          print
          (with-meta form)
          trace)))
-
-  ; (defn fib
-  ;   "Fibonacci number generator--an experimental tracing candidate"
-  ;   ([x]
-  ;   (fib (dec x) x))
-  ;   ([n x]
-  ;   (if (zero? n) x (fib #spy/t ^{:form true} (dec n)
-  ;                         #spy/t ^{:form true} (* n x)))))
